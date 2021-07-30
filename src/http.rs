@@ -1,11 +1,11 @@
-use crate::Error;
 use std::collections::HashMap;
 use std::fmt;
+use std::rc::Rc;
 
 /// An alias for `HashMap<String, String>`, which represents a set of HTTP headers and their values.
 pub type Headers = HashMap<String, String>;
 
-/// Enumerates the HTTP methods used by `tus_client::Client`.
+/// Enumerates the HTTP methods used by `tus_async_client::Client`.
 #[derive(Debug)]
 pub enum HttpMethod {
     Head,
@@ -37,10 +37,8 @@ pub struct HttpResponse {
     pub status_code: usize,
 }
 
-/// The required trait used by `tus_client::Client` to represent a handler to execute `HttpRequest`s.
-pub trait HttpHandler {
-    fn handle_request(&self, req: HttpRequest) -> Result<HttpResponse, Error>;
-}
+/// The required trait used by `tus_async_client::Client` to represent a handler to execute `HttpRequest`s.
+pub struct HttpHandler(pub(crate) Rc<reqwest::Client>);
 
 /// Returns the default headers required to make requests to an tus enabled endpoint.
 pub fn default_headers() -> Headers {

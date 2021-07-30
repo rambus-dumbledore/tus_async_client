@@ -4,20 +4,25 @@ use reqwest::header::{HeaderMap, HeaderName};
 use reqwest::Method;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::rc::Rc;
 
-impl HttpHandler for reqwest::Client {
-    fn handle_request(&self, req: HttpRequest) -> Result<HttpResponse, Error> {
+impl HttpHandler {
+    pub fn new(client: Rc<reqwest::Client>) -> Self {
+        Self(client)
+    }
+
+    pub(crate) async fn handle_request(&self, req: HttpRequest<'_>) -> Result<HttpResponse, Error> {
         let mut headers = HeaderMap::new();
         for (key, value) in req.headers {
             headers.insert(HeaderName::from_str(&key).unwrap(), value.parse().unwrap());
         }
 
         let mut builder = match req.method {
-            HttpMethod::Head => self.head(&req.url),
-            HttpMethod::Patch => self.patch(&req.url),
-            HttpMethod::Options => self.request(Method::OPTIONS, &req.url),
-            HttpMethod::Post => self.post(&req.url),
-            HttpMethod::Delete => self.delete(&req.url),
+            HttpMethod::Head => self.0.head(&req.url),
+            HttpMethod::Patch => self.0.patch(&req.url),
+            HttpMethod::Options => self.0.request(Method::OPTIONS, &req.url),
+            HttpMethod::Post => self.0.post(&req.url),
+            HttpMethod::Delete => self.0.delete(&req.url),
         }
         .headers(headers);
 
@@ -25,7 +30,7 @@ impl HttpHandler for reqwest::Client {
             builder = builder.body(Vec::from(body));
         }
 
-        let response = match builder.send() {
+        let response = match builder.send().await {
             Ok(resp) => resp,
             Err(err) => return Err(Error::HttpHandlerError(err.to_string())),
         };

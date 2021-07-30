@@ -1,26 +1,17 @@
-//! # tus_client
+//! # tus_async_client
 //!
 //! A Rust native client library to interact with *tus* enabled endpoints.
-//!
-//! ## `reqwest` implementation
-//!
-//! `tus_client` requires a "handler" which implements the `HttpHandler` trait. To include a default implementation of this trait for [`reqwest`](https://crates.io/crates/reqwest), specify the `reqwest` feature when including `tus_client` as a dependency.
-//!
-//! ```toml
-//! # Other parts of Cargo.toml omitted for brevity
-//! [dependencies]
-//! tus_client = {version = "x.x.x", features = ["reqwest"]}
-//! ```
 //!
 //! ## Usage
 //!
 //! ```rust
-//! use tus_client::Client;
+//! use tus_async_client::Client;
 //! use reqwest;
+//! use std::rc::Rc;
 //!
-//! // Create an instance of the `tus_client::Client` struct.
+//! // Create an instance of the `tus_async_client::Client` struct.
 //! // Assumes "reqwest" feature is enabled (see above)
-//! let client = Client::new(reqwest::Client::new());
+//! let client = Client::new(Rc::new(reqwest::Client::new()));
 //!
 //! // You'll need an upload URL to be able to upload a files.
 //! // This may be provided to you (through a separate API, for example),
@@ -28,7 +19,7 @@
 //! // If an upload URL is provided for you, you can skip this step.
 //!
 //! let upload_url = client
-//! .create("https://my.tus.server/files/", "/path/to/file")
+//! .create("https://my.tus.server/files/", "/path/to/file").await
 //! .expect("Failed to create file on server");
 //!
 //! // Next, you can start uploading the file by calling `upload`.
@@ -36,13 +27,13 @@
 //! // To customize the chunk size, use `upload_with_chunk_size` instead of `upload`.
 //!
 //! client
-//! .upload(&upload_url, "/path/to/file")
+//! .upload(&upload_url, "/path/to/file").await
 //! .expect("Failed to upload file to server");
 //! ```
 //!
 //! `upload` (and `upload_with_chunk_size`) will automatically resume the upload from where it left off, if the upload transfer is interrupted.
-#![doc(html_root_url = "https://docs.rs/tus_client/0.1.1")]
-use crate::http::{default_headers, Headers, HttpHandler, HttpMethod, HttpRequest};
+#![doc(html_root_url = "https://docs.rs/tus_async_client/0.1.0")]
+use crate::http::{default_headers, Headers, HttpMethod, HttpRequest};
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter};
@@ -50,48 +41,47 @@ use std::fs::File;
 use std::io;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::num::ParseIntError;
-use std::ops::Deref;
 use std::path::Path;
 use std::str::FromStr;
 
 mod headers;
 /// Contains the `HttpHandler` trait and related structs. This module is only relevant when implement `HttpHandler` manually.
 pub mod http;
+mod http_handler;
 
-#[cfg(feature = "reqwest")]
-mod reqwest;
+pub use http::HttpHandler;
 
 const DEFAULT_CHUNK_SIZE: usize = 5 * 1024 * 1024;
 
 /// Used to interact with a [tus](https://tus.io) endpoint.
-pub struct Client<'a> {
+pub struct Client {
     use_method_override: bool,
-    http_handler: Box<dyn HttpHandler + 'a>,
+    http_handler: HttpHandler,
 }
 
-impl<'a> Client<'a> {
+impl Client {
     /// Instantiates a new instance of `Client`. `http_handler` needs to implement the `HttpHandler` trait.
     /// A default implementation of this trait for the `reqwest` library is available by enabling the `reqwest` feature.
-    pub fn new(http_handler: impl HttpHandler + 'a) -> Self {
+    pub fn new(http_handler: HttpHandler) -> Self {
         Client {
             use_method_override: false,
-            http_handler: Box::new(http_handler),
+            http_handler,
         }
     }
 
     /// Some environments might not support using the HTTP methods `PATCH` and `DELETE`. Use this method to create a `Client` which uses the `X-HTTP-METHOD-OVERRIDE` header to specify these methods instead.
-    pub fn with_method_override(http_handler: impl HttpHandler + 'a) -> Self {
+    pub fn with_method_override(http_handler: HttpHandler) -> Self
+    {
         Client {
             use_method_override: true,
-            http_handler: Box::new(http_handler),
+            http_handler,
         }
     }
 
     /// Get info about a file on the server.
-    pub fn get_info(&self, url: &str) -> Result<UploadInfo, Error> {
+    pub async fn get_info(&self, url: &str) -> Result<UploadInfo, Error> {
         let req = self.create_request(HttpMethod::Head, url, None, Some(default_headers()));
-
-        let response = self.http_handler.deref().handle_request(req)?;
+        let response = self.http_handler.handle_request(req).await?;
 
         let bytes_uploaded = response.headers.get_by_key(headers::UPLOAD_OFFSET);
         let total_size = response
@@ -132,28 +122,28 @@ impl<'a> Client<'a> {
     }
 
     /// Upload a file to the specified upload URL.
-    pub fn upload(&self, url: &str, path: &Path) -> Result<(), Error> {
-        self.upload_with_chunk_size(url, path, DEFAULT_CHUNK_SIZE)
+    pub async fn upload(&self, url: &str, path: &Path) -> Result<(), Error> {
+        self.upload_with_chunk_size(&url, path, DEFAULT_CHUNK_SIZE).await
     }
 
     /// Upload a file to the specified upload URL with the given chunk size.
-    pub fn upload_with_chunk_size(
+    pub async fn upload_with_chunk_size(
         &self,
         url: &str,
         path: &Path,
         chunk_size: usize,
     ) -> Result<(), Error> {
-        let info = self.get_info(url)?;
+        let info = self.get_info(url).await?;
         let file = File::open(path)?;
-        let file_len = file.metadata()?.len();
+        let file_len = file.metadata()?.len() as usize;
 
         if let Some(total_size) = info.total_size {
-            if file_len as usize != total_size {
+            if file_len != total_size {
                 return Err(Error::UnequalSizeError);
             }
         }
 
-        let mut reader = BufReader::new(&file);
+        let mut reader = BufReader::new(file);
         let mut buffer = vec![0; chunk_size];
         let mut progress = info.bytes_uploaded;
 
@@ -172,7 +162,7 @@ impl<'a> Client<'a> {
                 Some(create_upload_headers(progress)),
             );
 
-            let response = self.http_handler.deref().handle_request(req)?;
+            let response = self.http_handler.handle_request(req).await?;
 
             if response.status_code == 409 {
                 return Err(Error::WrongUploadOffsetError);
@@ -202,10 +192,10 @@ impl<'a> Client<'a> {
     }
 
     /// Get information about the tus server
-    pub fn get_server_info(&self, url: &str) -> Result<ServerInfo, Error> {
-        let req = self.create_request(HttpMethod::Options, url, None, None);
+    pub async fn get_server_info(&self, url: &str) -> Result<ServerInfo, Error> {
+        let req = self.create_request(HttpMethod::Head, url, None, None);
 
-        let response = self.http_handler.deref().handle_request(req)?;
+        let response = self.http_handler.handle_request(req).await?;
 
         if ![200_usize, 204].contains(&response.status_code) {
             return Err(Error::UnexpectedStatusCode(response.status_code));
@@ -241,12 +231,12 @@ impl<'a> Client<'a> {
     }
 
     /// Create a file on the server, receiving the upload URL of the file.
-    pub fn create(&self, url: &str, path: &Path) -> Result<String, Error> {
-        self.create_with_metadata(url, path, HashMap::new())
+    pub async fn create(&self, url: &str, path: &Path) -> Result<String, Error> {
+        self.create_with_metadata(url, path, HashMap::new()).await
     }
 
     /// Create a file on the server including the specified metadata, receiving the upload URL of the file.
-    pub fn create_with_metadata(
+    pub async fn create_with_metadata(
         &self,
         url: &str,
         path: &Path,
@@ -268,7 +258,7 @@ impl<'a> Client<'a> {
 
         let req = self.create_request(HttpMethod::Post, url, None, Some(headers));
 
-        let response = self.http_handler.deref().handle_request(req)?;
+        let response = self.http_handler.handle_request(req).await?;
 
         if response.status_code == 413 {
             return Err(Error::FileTooLarge);
@@ -288,10 +278,10 @@ impl<'a> Client<'a> {
     }
 
     /// Delete a file on the server.
-    pub fn delete(&self, url: &str) -> Result<(), Error> {
+    pub async fn delete(&self, url: &str) -> Result<(), Error> {
         let req = self.create_request(HttpMethod::Delete, url, None, Some(default_headers()));
 
-        let response = self.http_handler.deref().handle_request(req)?;
+        let response = self.http_handler.handle_request(req).await?;
 
         if response.status_code != 204 {
             return Err(Error::UnexpectedStatusCode(response.status_code));

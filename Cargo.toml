@@ -1,19 +1,14 @@
 [package]
-name = "tus_client"
-version = "0.1.1" # remember to update html_root_url
-authors = ["Jon Grythe Stødle <jonstodle@outlook.com>"]
+name = "tus_async_client"
+version = "0.1.0"
+authors = ["Ilya Volchenkov <lzhepelmen@gmail.com>"]
 edition = "2018"
 license = "MIT"
-description = "A Rust native client library to interact with *tus* enabled endpoints."
-keywords = ["tus", "upload", "resumable"]
-repository = "https://github.com/jonstodle/tus_client"
+description = "A Rust native async client library to interact with *tus* enabled endpoints."
+keywords = ["tus", "upload", "resumable", "async"]
+repository = "https://github.com/rambus-dumbledore/tus_async_client"
 readme = "README.md"
 
-
 [dependencies]
-base64 = "0.10"
-reqwest = {version = "0.9", optional = true}
-
-[dev-dependencies]
-tempfile = "3.1.0"
-rand = "0.7.0"
+base64 = "=0.10.1"
+reqwest = "=0.11.3"
