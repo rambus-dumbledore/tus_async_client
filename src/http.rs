@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// An alias for `HashMap<String, String>`, which represents a set of HTTP headers and their values.
 pub type Headers = HashMap<String, String>;
@@ -38,7 +39,7 @@ pub struct HttpResponse {
 }
 
 /// The required trait used by `tus_async_client::Client` to represent a handler to execute `HttpRequest`s.
-pub struct HttpHandler(pub(crate) Rc<reqwest::Client>);
+pub struct HttpHandler(pub(crate) Arc<reqwest::Client>);
 
 /// Returns the default headers required to make requests to an tus enabled endpoint.
 pub fn default_headers() -> Headers {

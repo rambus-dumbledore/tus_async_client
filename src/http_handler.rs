@@ -4,10 +4,11 @@ use reqwest::header::{HeaderMap, HeaderName};
 use reqwest::Method;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::rc::Rc;
+use std::rc::{Rc};
+use std::sync::Arc;
 
 impl HttpHandler {
-    pub fn new(client: Rc<reqwest::Client>) -> Self {
+    pub fn new(client: Arc<reqwest::Client>) -> Self {
         Self(client)
     }
 
