@@ -8,10 +8,11 @@
 //! use tus_async_client::Client;
 //! use reqwest;
 //! use std::rc::Rc;
+//! use std::sync::Arc;
 //!
 //! // Create an instance of the `tus_async_client::Client` struct.
 //! // Assumes "reqwest" feature is enabled (see above)
-//! let client = Client::new(Rc::new(reqwest::Client::new()));
+//! let client = Client::new(Arc::new(reqwest::Client::new()));
 //!
 //! // You'll need an upload URL to be able to upload a files.
 //! // This may be provided to you (through a separate API, for example),
@@ -451,3 +452,4 @@ fn create_upload_headers(progress: usize) -> Headers {
     headers.insert(headers::UPLOAD_OFFSET.to_owned(), progress.to_string());
     headers
 }
+
