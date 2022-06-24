@@ -1,19 +1,19 @@
 # tus_async_client
 
-Fork of [tus_client](https://github.com/rambus-dumbledore/tus_async_client)
+Fork of [tus_client](https://github.com/jonstodle/tus_client)
 
 A Rust native async client library to interact with *tus* enabled endpoints.
 
 ## Usage
 
-Create an instance of the `tus_client::Client` struct.
+Create an instance of the `tus_async_client::Client` struct.
 
 ```rust
 use tus_async_client::{Client, HttpHandler};
 use reqwest;
-use std::rc::Rc;
+use std::sync::Arc;
 
-let client = Client::new(Rc::new(reqwest::Client::new()));
+let client = Client::new(Arc::new(reqwest::Client::new()));
 ```
 
 You'll need an upload URL to be able to upload a files. This may be provided to you (through a separate API, for example), or you might need to create the file through the *tus* protocol. If an upload URL is provided for you, you can skip this step.
