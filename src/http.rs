@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::rc::Rc;
 use std::sync::Arc;
 
 /// An alias for `HashMap<String, String>`, which represents a set of HTTP headers and their values.

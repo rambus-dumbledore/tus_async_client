@@ -1,8 +1,8 @@
 [package]
 name = "tus_async_client"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Ilya Volchenkov <lzhepelmen@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "A Rust native async client library to interact with *tus* enabled endpoints."
 keywords = ["tus", "upload", "resumable", "async"]
@@ -10,5 +10,5 @@ repository = "https://github.com/rambus-dumbledore/tus_async_client"
 readme = "README.md"
 
 [dependencies]
-base64 = "=0.10.1"
-reqwest = "=0.11.3"
+base64 = "0.13"
+reqwest = "0.11"

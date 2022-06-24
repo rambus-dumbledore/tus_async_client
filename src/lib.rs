@@ -33,7 +33,7 @@
 //! ```
 //!
 //! `upload` (and `upload_with_chunk_size`) will automatically resume the upload from where it left off, if the upload transfer is interrupted.
-#![doc(html_root_url = "https://docs.rs/tus_async_client/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/tus_async_client/0.2.0")]
 use crate::http::{default_headers, Headers, HttpMethod, HttpRequest};
 use std::collections::HashMap;
 use std::error::Error as StdError;

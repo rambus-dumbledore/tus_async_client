@@ -4,7 +4,6 @@ use reqwest::header::{HeaderMap, HeaderName};
 use reqwest::Method;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::rc::{Rc};
 use std::sync::Arc;
 
 impl HttpHandler {
